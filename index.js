@@ -26,7 +26,7 @@ class RPSGame {
     // Send welcome message
     this.sendToPlayer(socket, {
       type: 'info',
-      message: 'Welcome to Rock Paper Scissors! Waiting for an opponent...'
+      message: 'Хайч чулуу даавуу тоглоомонд тавтай морил! Өрсөлдөгчийг хүлээр байна...'
     });
     
     // Set up event handlers
