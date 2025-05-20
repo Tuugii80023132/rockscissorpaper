@@ -1,5 +1,13 @@
 const WebSocket = require('ws');
+const Pusher = require("pusher");
 
+const pusher = new Pusher({
+  appId: "1995448",
+  key: "46bd8bb79042d0f5ef96",
+  secret: "a75066a03daeff8247c5",
+  cluster: "ap3",
+  useTLS: true
+});
 class RPSGame {
   constructor(port = 8080) {
     this.server = new WebSocket.Server({ port });
@@ -114,18 +122,26 @@ class RPSGame {
   }
 
   handleChat(socket, message) {
-    const gameId = this.findPlayerGame(socket);
-    if (!gameId) return;
+  const gameId = this.findPlayerGame(socket);
+  if (!gameId) return;
 
-    const game = this.activeGames.get(gameId);
-    const opponent = game.player1.socket === socket ? game.player2.socket : game.player1.socket;
-    
-    this.sendToPlayer(opponent, {
-      type: 'chat',
-      message,
-      from: 'opponent'
-    });
-  }
+  const game = this.activeGames.get(gameId);
+  const opponent = game.player1.socket === socket ? game.player2.socket : game.player1.socket;
+
+  this.sendToPlayer(opponent, {
+    type: 'chat',
+    message,
+    from: 'opponent'
+  });
+
+  // ✅ Pusher broadcast chat
+  pusher.trigger("rps-channel", "chat", {
+    from: socket.id,
+    to: opponent.id,
+    message
+  });
+}
+
 
   handleRematchRequest(socket) {
     const gameId = this.findPlayerGame(socket);
@@ -198,40 +214,47 @@ class RPSGame {
   }
 
   createGame(gameId, player1Socket, player2Socket) {
-    // Initialize a new game
-    const game = {
-      player1: {
-        socket: player1Socket,
-        choice: null,
-        ready: false,
-        score: 0,
-        wantsRematch: false
-      },
-      player2: {
-        socket: player2Socket,
-        choice: null,
-        ready: false,
-        score: 0,
-        wantsRematch: false
-      },
-      rounds: 0
-    };
-    
-    this.activeGames.set(gameId, game);
-    
-    // Notify players
-    this.sendToPlayer(player1Socket, {
-      type: 'gameStart',
-      player: 1,
-      gameId
-    });
-    
-    this.sendToPlayer(player2Socket, {
-      type: 'gameStart',
-      player: 2,
-      gameId
-    });
-  }
+  const game = {
+    player1: {
+      socket: player1Socket,
+      choice: null,
+      ready: false,
+      score: 0,
+      wantsRematch: false
+    },
+    player2: {
+      socket: player2Socket,
+      choice: null,
+      ready: false,
+      score: 0,
+      wantsRematch: false
+    },
+    rounds: 0
+  };
+
+  this.activeGames.set(gameId, game);
+
+  // Notify players individually
+  this.sendToPlayer(player1Socket, {
+    type: 'gameStart',
+    player: 1,
+    gameId
+  });
+
+  this.sendToPlayer(player2Socket, {
+    type: 'gameStart',
+    player: 2,
+    gameId
+  });
+
+  // ✅ Broadcast game start via Pusher
+  pusher.trigger("rps-channel", "game-start", {
+    gameId,
+    players: [player1Socket.id, player2Socket.id],
+    message: "A new Rock-Paper-Scissors game has started!"
+  });
+}
+
 
   determineGameResult(gameId) {
     const game = this.activeGames.get(gameId);

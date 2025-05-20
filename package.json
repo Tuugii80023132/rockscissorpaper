@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/Tuugii80023132/rockscissorpaper#readme",
   "dependencies": {
+    "pusher": "^5.2.0",
     "ws": "^8.18.2"
   }
 }
